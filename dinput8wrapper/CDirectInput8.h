@@ -77,6 +77,27 @@ public:
 			diGlobalsInstance->LogA("SetWindowsHookExW(WH_MOUSE_LL) installed", __FILE__, __LINE__);
 		}
 
+		// Clear DI keyboard state on every foreground change. Under
+		// Wine on macOS, Cmd+Tab away dispatches Cmd-down (mapped to
+		// Alt-down) into EQ but the matching up never reaches us
+		// because focus has already moved. Without clearing, EQ's
+		// next GetDeviceState reports Alt held and game movement is
+		// interpreted as Alt+W etc. WINEVENT_OUTOFCONTEXT routes the
+		// callback through this thread's message pump.
+		HWINEVENTHOOK winEventHook = SetWinEventHook(
+			EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
+			NULL, WinEventProc, 0, 0,
+			WINEVENT_OUTOFCONTEXT);
+		if (winEventHook == NULL)
+		{
+			DWORD err = GetLastError();
+			diGlobalsInstance->LogA("SetWinEventHook(FOREGROUND) failed, err=%x", __FILE__, __LINE__, err);
+		}
+		else
+		{
+			diGlobalsInstance->LogA("SetWinEventHook(FOREGROUND) installed", __FILE__, __LINE__);
+		}
+
 		MSG msg;
 		while (GetMessage(&msg, NULL, 0, 0) > 0)
 		{
@@ -85,6 +106,19 @@ public:
 		}
 
 		return msg.wParam;
+	}
+
+	static void CALLBACK WinEventProc(HWINEVENTHOOK /*hWinEventHook*/, DWORD event, HWND hwnd,
+		LONG /*idObject*/, LONG /*idChild*/, DWORD /*idEventThread*/, DWORD /*dwmsEventTime*/)
+	{
+		if (event == EVENT_SYSTEM_FOREGROUND && diGlobalsInstance != NULL)
+		{
+			diGlobalsInstance->Lock();
+			ZeroMemory(diGlobalsInstance->keyStates, sizeof(diGlobalsInstance->keyStates));
+			ZeroMemory(diGlobalsInstance->gameKeyStates, sizeof(diGlobalsInstance->gameKeyStates));
+			diGlobalsInstance->Unlock();
+			diGlobalsInstance->LogA("Foreground change hwnd=%x, keyStates cleared", __FILE__, __LINE__, (DWORD)(ULONG_PTR)hwnd);
+		}
 	}
 
 	static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
