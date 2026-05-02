@@ -91,15 +91,21 @@ public:
 	{
 		if (nCode >= 0)
 		{
-			diGlobalsInstance->LogA("LL hook fired wParam=%x", __FILE__, __LINE__, (DWORD)wParam);
+			diGlobalsInstance->LogA("LL hook wParam=%x tid=%x &globals=%x &state=%x",
+				__FILE__, __LINE__,
+				(DWORD)wParam,
+				(DWORD)GetCurrentThreadId(),
+				(DWORD)(ULONG_PTR)diGlobalsInstance,
+				(DWORD)(ULONG_PTR)diGlobalsInstance->mouseStateDeviceData);
 			if (wParam == WM_MOUSEWHEEL)
 			{
 				MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
 				short delta = (short)HIWORD(msll->mouseData);
-				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i mouseData=%x", __FILE__, __LINE__, (int)delta, msll->mouseData);
 				diGlobalsInstance->Lock();
 				diGlobalsInstance->mouseStateDeviceData->lZ += delta;
+				LONG newLZ = diGlobalsInstance->mouseStateDeviceData->lZ;
 				diGlobalsInstance->Unlock();
+				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i lZ_after=%i", __FILE__, __LINE__, (int)delta, newLZ);
 			}
 		}
 		return CallNextHookEx(NULL, nCode, wParam, lParam);

@@ -141,10 +141,12 @@ public:
 			LONG dbgX = diGlobalsInstance->mouseStateDeviceData->lX;
 			LONG dbgY = diGlobalsInstance->mouseStateDeviceData->lY;
 			LONG dbgZ = diGlobalsInstance->mouseStateDeviceData->lZ;
-			if (dbgX || dbgY || dbgZ)
-			{
-				diGlobalsInstance->LogA("GetDeviceState -> lX=%i lY=%i lZ=%i cbData=%i", __FILE__, __LINE__, dbgX, dbgY, dbgZ, cbData);
-			}
+			diGlobalsInstance->LogA("GetDevSt tid=%x &globals=%x &state=%x lX=%i lY=%i lZ=%i",
+				__FILE__, __LINE__,
+				(DWORD)GetCurrentThreadId(),
+				(DWORD)(ULONG_PTR)diGlobalsInstance,
+				(DWORD)(ULONG_PTR)diGlobalsInstance->mouseStateDeviceData,
+				dbgX, dbgY, dbgZ);
 
 			// Copy current state to lpvData
 			memcpy(lpvData, diGlobalsInstance->mouseStateDeviceData, sizeof(DIMOUSESTATE));
