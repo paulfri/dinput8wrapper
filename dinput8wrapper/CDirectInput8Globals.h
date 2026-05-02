@@ -29,6 +29,12 @@ public:
 
 	HANDLE mouseEventHandle = NULL;
 
+	// Last-seen absolute cursor position (for Wine/macOS, which delivers
+	// raw mouse motion as MOUSE_MOVE_ABSOLUTE). Used to compute deltas.
+	LONG lastAbsX = 0;
+	LONG lastAbsY = 0;
+	bool lastAbsValid = false;
+
 	DIJOYSTATE2* gamepadState = new DIJOYSTATE2();
 
 	void LogA(LPCSTR LogLine, LPCTSTR file, int line, ...)
@@ -72,14 +78,20 @@ public:
 			dikMapping[VK_LBUTTON] = 0xFF;
 			dikMapping[VK_RBUTTON] = 0xFF;
 			dikMapping[VK_MBUTTON] = 0xFF;
-			dikMapping[VK_OEM_1] = 0xFF;
-			dikMapping[VK_OEM_2] = 0xFF;
 
 			dikMapping[VK_SHIFT] = DIK_LSHIFT;
 			dikMapping[VK_CONTROL] = DIK_LCONTROL;
 			dikMapping[VK_MENU] = DIK_LMENU;
 
-			dikMapping[VK_OEM_PLUS] = DIK_ADD;
+			// OEM keys (US QWERTY layout)
+			dikMapping[VK_OEM_1] = DIK_SEMICOLON;     // ;:
+			dikMapping[VK_OEM_2] = DIK_SLASH;         // /?  (EQ chat command)
+			dikMapping[VK_OEM_3] = DIK_GRAVE;         // `~
+			dikMapping[VK_OEM_4] = DIK_LBRACKET;      // [{
+			dikMapping[VK_OEM_5] = DIK_BACKSLASH;     // \|
+			dikMapping[VK_OEM_6] = DIK_RBRACKET;      // ]}
+			dikMapping[VK_OEM_7] = DIK_APOSTROPHE;    // '"
+			dikMapping[VK_OEM_PLUS] = DIK_EQUALS;     // =+ on main row
 			dikMapping[VK_OEM_COMMA] = DIK_COMMA;
 			dikMapping[VK_OEM_MINUS] = DIK_MINUS;
 			dikMapping[VK_OEM_PERIOD] = DIK_PERIOD;
@@ -339,11 +351,23 @@ public:
 		{
 			if (raw->header.dwType == RIM_TYPEMOUSE)
 			{
+				// Wine on macOS delivers raw mouse motion as absolute
+				// virtual-screen coordinates. Translate to deltas in
+				// place so the rest of the handler is uniform.
 				if ((raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
 				{
-					LogA("IsAbsoluteMouse - not handled yet", __FILE__, __LINE__);
+					LONG curX = raw->data.mouse.lLastX;
+					LONG curY = raw->data.mouse.lLastY;
+					LONG dX = lastAbsValid ? (curX - lastAbsX) : 0;
+					LONG dY = lastAbsValid ? (curY - lastAbsY) : 0;
+					lastAbsX = curX;
+					lastAbsY = curY;
+					lastAbsValid = true;
+					raw->data.mouse.lLastX = dX;
+					raw->data.mouse.lLastY = dY;
+					raw->data.mouse.usFlags &= ~MOUSE_MOVE_ABSOLUTE;
 				}
-				else
+
 				{
 					mouseStateDeviceData->lX += raw->data.mouse.lLastX;
 					mouseStateDeviceData->lY += raw->data.mouse.lLastY;
