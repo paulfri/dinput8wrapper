@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64]
+        configuration: [Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ${{ matrix.configuration }}|${{ matrix.platform }}
+        run: msbuild dinput8wrapper.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /m
+
+      - name: Locate build outputs
+        id: outputs
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Recurse -Filter dinput8.dll | Select-Object -First 1
+          if (-not $dll) { Write-Error "dinput8.dll not found"; exit 1 }
+          $pdb = Get-ChildItem -Recurse -Filter dinput8.pdb | Select-Object -First 1
+          Write-Host "DLL: $($dll.FullName)"
+          if ($pdb) { Write-Host "PDB: $($pdb.FullName)" }
+          "dll=$($dll.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          if ($pdb) { "pdb=$($pdb.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dinput8-${{ matrix.platform }}-${{ matrix.configuration }}
+          path: |
+            **/dinput8.dll
+            **/dinput8.pdb
+          if-no-files-found: error
