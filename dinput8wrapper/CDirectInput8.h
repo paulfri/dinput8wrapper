@@ -89,26 +89,14 @@ public:
 
 	static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
-		if (nCode >= 0)
+		if (nCode >= 0 && wParam == WM_MOUSEWHEEL)
 		{
-			diGlobalsInstance->LogA("LL hook wParam=%x tid=%x &globals=%x &state=%x",
-				__FILE__, __LINE__,
-				(DWORD)wParam,
-				(DWORD)GetCurrentThreadId(),
-				(DWORD)(ULONG_PTR)diGlobalsInstance,
-				(DWORD)(ULONG_PTR)diGlobalsInstance->mouseStateDeviceData);
-			if (wParam == WM_MOUSEWHEEL)
-			{
-				MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
-				short delta = (short)HIWORD(msll->mouseData);
-				diGlobalsInstance->Lock();
-				diGlobalsInstance->mouseStateDeviceData->lZ += delta;
-				diGlobalsInstance->bufferedDZ += delta;
-				LONG newLZ = diGlobalsInstance->mouseStateDeviceData->lZ;
-				LONG newBZ = diGlobalsInstance->bufferedDZ;
-				diGlobalsInstance->Unlock();
-				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i lZ=%i bZ=%i", __FILE__, __LINE__, (int)delta, newLZ, newBZ);
-			}
+			MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
+			short delta = (short)HIWORD(msll->mouseData);
+			diGlobalsInstance->Lock();
+			diGlobalsInstance->mouseStateDeviceData->lZ += delta;
+			diGlobalsInstance->bufferedDZ += delta;
+			diGlobalsInstance->Unlock();
 		}
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
