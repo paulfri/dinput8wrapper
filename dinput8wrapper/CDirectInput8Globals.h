@@ -53,10 +53,29 @@ public:
 		char tmp2[4096];
 		wvsprintfA(tmp2, LogLine, args);
 		va_end(args);
-		
+
 		char tmp[4096];
 		StringCbPrintfA(tmp, 4096, "[dinput8][%s:%u] %s\r\n",filePtr,line,tmp2);
 		OutputDebugStringA(tmp);
+
+		// Append to a fixed log file inside the bottle's drive_c so
+		// the log can be inspected from the host side without needing
+		// WINEDEBUG. C:\dinput8wrapper.log
+		HANDLE h = CreateFileA(
+			"C:\\dinput8wrapper.log",
+			FILE_APPEND_DATA,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			OPEN_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL,
+			NULL);
+		if (h != INVALID_HANDLE_VALUE)
+		{
+			DWORD written = 0;
+			SetFilePointer(h, 0, NULL, FILE_END);
+			WriteFile(h, tmp, (DWORD)strlen(tmp), &written, NULL);
+			CloseHandle(h);
+		}
 	}
 
 	CDirectInput8Globals()
@@ -351,6 +370,13 @@ public:
 		{
 			if (raw->header.dwType == RIM_TYPEMOUSE)
 			{
+				LogA("RawMouse: usFlags=%x usButtonFlags=%x usButtonData=%i lLastX=%i lLastY=%i", __FILE__, __LINE__,
+					raw->data.mouse.usFlags,
+					raw->data.mouse.usButtonFlags,
+					raw->data.mouse.usButtonData,
+					raw->data.mouse.lLastX,
+					raw->data.mouse.lLastY);
+
 				// Wine on macOS delivers raw mouse motion as absolute
 				// virtual-screen coordinates. Translate to deltas in
 				// place so the rest of the handler is uniform.

@@ -38,6 +38,16 @@ public:
 
 		if (!RegisterClassExA(&wcex))
 		{
+			// EQ instantiates DirectInput8 more than once (probe +
+			// real init). Only the first call's thread should run
+			// the window/raw-input/hook setup; later calls just
+			// piggyback on the global state.
+			DWORD err = GetLastError();
+			if (err == ERROR_CLASS_ALREADY_EXISTS)
+			{
+				diGlobalsInstance->LogA("CDirectInput8 class already registered, skipping init", __FILE__, __LINE__);
+				return 0;
+			}
 			MessageBoxA(NULL, "RegisterClassExA() failed", "dinput8.dll", MB_OK);
 			return 0;
 		}
@@ -59,7 +69,12 @@ public:
 		HHOOK mouseHook = SetWindowsHookExW(WH_MOUSE_LL, LowLevelMouseProc, DllHModule, 0);
 		if (mouseHook == NULL)
 		{
-			diGlobalsInstance->LogA("SetWindowsHookExW(WH_MOUSE_LL) failed", __FILE__, __LINE__);
+			DWORD err = GetLastError();
+			diGlobalsInstance->LogA("SetWindowsHookExW(WH_MOUSE_LL) failed, err=%x", __FILE__, __LINE__, err);
+		}
+		else
+		{
+			diGlobalsInstance->LogA("SetWindowsHookExW(WH_MOUSE_LL) installed", __FILE__, __LINE__);
 		}
 
 		MSG msg;
@@ -74,13 +89,18 @@ public:
 
 	static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
-		if (nCode >= 0 && wParam == WM_MOUSEWHEEL)
+		if (nCode >= 0)
 		{
-			MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
-			short delta = (short)HIWORD(msll->mouseData);
-			diGlobalsInstance->Lock();
-			diGlobalsInstance->mouseStateDeviceData->lZ += delta;
-			diGlobalsInstance->Unlock();
+			diGlobalsInstance->LogA("LL hook fired wParam=%x", __FILE__, __LINE__, (DWORD)wParam);
+			if (wParam == WM_MOUSEWHEEL)
+			{
+				MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
+				short delta = (short)HIWORD(msll->mouseData);
+				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i mouseData=%x", __FILE__, __LINE__, (int)delta, msll->mouseData);
+				diGlobalsInstance->Lock();
+				diGlobalsInstance->mouseStateDeviceData->lZ += delta;
+				diGlobalsInstance->Unlock();
+			}
 		}
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
