@@ -83,9 +83,9 @@ public:
 	}
 
 	HRESULT STDMETHODCALLTYPE Base_Acquire() {
-		diGlobalsInstance->LogA("MouseDevice->Acquire()", __FILE__, __LINE__);
+		diGlobalsInstance->LogA("MouseDevice->Acquire this=%x", __FILE__, __LINE__, (DWORD)(ULONG_PTR)this);
 
-		this->hWndForegroundWindow = GetForegroundWindow();	
+		this->hWndForegroundWindow = GetForegroundWindow();
 		
 		this->Base_AcquireInternal();
 		this->isAquired = true;
@@ -145,12 +145,15 @@ public:
 			LONG dbgX = diGlobalsInstance->mouseStateDeviceData->lX;
 			LONG dbgY = diGlobalsInstance->mouseStateDeviceData->lY;
 			LONG dbgZ = diGlobalsInstance->mouseStateDeviceData->lZ;
-			diGlobalsInstance->LogA("GetDevSt tid=%x &globals=%x &state=%x lX=%i lY=%i lZ=%i",
+			diGlobalsInstance->LogA("GetDevSt this=%x tid=%x lX=%i lY=%i lZ=%i btn=%x%x%x%x",
 				__FILE__, __LINE__,
+				(DWORD)(ULONG_PTR)this,
 				(DWORD)GetCurrentThreadId(),
-				(DWORD)(ULONG_PTR)diGlobalsInstance,
-				(DWORD)(ULONG_PTR)diGlobalsInstance->mouseStateDeviceData,
-				dbgX, dbgY, dbgZ);
+				dbgX, dbgY, dbgZ,
+				diGlobalsInstance->mouseStateDeviceData->rgbButtons[0],
+				diGlobalsInstance->mouseStateDeviceData->rgbButtons[1],
+				diGlobalsInstance->mouseStateDeviceData->rgbButtons[2],
+				diGlobalsInstance->mouseStateDeviceData->rgbButtons[3]);
 
 			// Copy current state to lpvData
 			memcpy(lpvData, diGlobalsInstance->mouseStateDeviceData, sizeof(DIMOUSESTATE));
@@ -167,8 +170,8 @@ public:
 	}
 
 	HRESULT STDMETHODCALLTYPE Base_GetDeviceData(DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags) {
-		diGlobalsInstance->LogA("GetDeviceData cbObj=%i pdwInOut=%i dwFlags=%x rgdod=%x",
-			__FILE__, __LINE__, cbObjectData, (pdwInOut ? *pdwInOut : 0), dwFlags, (DWORD)(ULONG_PTR)rgdod);
+		diGlobalsInstance->LogA("GetDeviceData this=%x cbObj=%i pdwInOut=%i dwFlags=%x rgdod=%x",
+			__FILE__, __LINE__, (DWORD)(ULONG_PTR)this, cbObjectData, (pdwInOut ? *pdwInOut : 0), dwFlags, (DWORD)(ULONG_PTR)rgdod);
 
 		if (!this->isAquired)
 		{
