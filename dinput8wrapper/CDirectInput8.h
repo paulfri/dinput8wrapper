@@ -52,6 +52,16 @@ public:
 		ShowWindow(hWnd, SW_HIDE);
 		UpdateWindow(hWnd);
 
+		// Wine on macOS does not appear to deliver mouse wheel events
+		// through WM_INPUT raw input — only motion and buttons. Fall
+		// back to a low-level mouse hook to capture WM_MOUSEWHEEL
+		// system-wide and forward the delta into the DI mouse state.
+		HHOOK mouseHook = SetWindowsHookExW(WH_MOUSE_LL, LowLevelMouseProc, DllHModule, 0);
+		if (mouseHook == NULL)
+		{
+			diGlobalsInstance->LogA("SetWindowsHookExW(WH_MOUSE_LL) failed", __FILE__, __LINE__);
+		}
+
 		MSG msg;
 		while (GetMessage(&msg, NULL, 0, 0) > 0)
 		{
@@ -60,6 +70,19 @@ public:
 		}
 
 		return msg.wParam;
+	}
+
+	static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
+	{
+		if (nCode >= 0 && wParam == WM_MOUSEWHEEL)
+		{
+			MSLLHOOKSTRUCT* msll = (MSLLHOOKSTRUCT*)lParam;
+			short delta = (short)HIWORD(msll->mouseData);
+			diGlobalsInstance->Lock();
+			diGlobalsInstance->mouseStateDeviceData->lZ += delta;
+			diGlobalsInstance->Unlock();
+		}
+		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	}
 
 	static LRESULT HandleWMInput(LPARAM lParam)
