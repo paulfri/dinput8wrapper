@@ -71,10 +71,14 @@ public:
 	}
 
 	HRESULT STDMETHODCALLTYPE Base_SetProperty(GUID* rguidProp, LPCDIPROPHEADER pdiph) {
-		diGlobalsInstance->LogA("MouseDevice->SetProperty()", __FILE__, __LINE__);
-		diGlobalsInstance->LogA("-> dwHow: %x", __FILE__,__LINE__,pdiph->dwHow);
-		diGlobalsInstance->LogA("-> dwObj: %x", __FILE__, __LINE__, pdiph->dwObj);		
-
+		DWORD propId = (DWORD)(ULONG_PTR)rguidProp;
+		DWORD propData = 0;
+		if (pdiph && pdiph->dwSize >= sizeof(DIPROPDWORD))
+		{
+			propData = ((LPDIPROPDWORD)pdiph)->dwData;
+		}
+		diGlobalsInstance->LogA("MouseDevice->SetProperty propId=%i dwHow=%x dwObj=%x dwData=%i",
+			__FILE__, __LINE__, propId, pdiph->dwHow, pdiph->dwObj, propData);
 		return E_NOTIMPL;
 	}
 
@@ -163,7 +167,8 @@ public:
 	}
 
 	HRESULT STDMETHODCALLTYPE Base_GetDeviceData(DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags) {
-		//diGlobalsInstance->LogA("MouseDevice->GetDeviceData()", __FILE__, __LINE__);
+		diGlobalsInstance->LogA("GetDeviceData cbObj=%i pdwInOut=%i dwFlags=%x rgdod=%x",
+			__FILE__, __LINE__, cbObjectData, (pdwInOut ? *pdwInOut : 0), dwFlags, (DWORD)(ULONG_PTR)rgdod);
 
 		if (!this->isAquired)
 		{
