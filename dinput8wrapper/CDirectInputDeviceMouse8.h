@@ -138,6 +138,14 @@ public:
 
 		diGlobalsInstance->Lock();
 		{
+			LONG dbgX = diGlobalsInstance->mouseStateDeviceData->lX;
+			LONG dbgY = diGlobalsInstance->mouseStateDeviceData->lY;
+			LONG dbgZ = diGlobalsInstance->mouseStateDeviceData->lZ;
+			if (dbgX || dbgY || dbgZ)
+			{
+				diGlobalsInstance->LogA("GetDeviceState -> lX=%i lY=%i lZ=%i cbData=%i", __FILE__, __LINE__, dbgX, dbgY, dbgZ, cbData);
+			}
+
 			// Copy current state to lpvData
 			memcpy(lpvData, diGlobalsInstance->mouseStateDeviceData, sizeof(DIMOUSESTATE));
 
