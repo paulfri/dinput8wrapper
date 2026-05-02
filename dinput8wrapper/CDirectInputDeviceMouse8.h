@@ -225,46 +225,46 @@ public:
 				{
 					for (DWORD i = 0; i < *pdwInOut; i++)
 					{
-						if (diGlobalsInstance->mouseStateDeviceData->lX != 0)
+						if (diGlobalsInstance->bufferedDX != 0)
 						{
-							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_X: %i", __FILE__, __LINE__, diGlobalsInstance->mouseStateDeviceData->lX);
+							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_X: %i", __FILE__, __LINE__, diGlobalsInstance->bufferedDX);
 
-							rgdod[i].dwData = diGlobalsInstance->mouseStateDeviceData->lX;
+							rgdod[i].dwData = diGlobalsInstance->bufferedDX;
 							rgdod[i].dwOfs = DIMOFS_X;
 							rgdod[i].dwSequence = diGlobalsInstance->dwSequence;
 							rgdod[i].dwTimeStamp = (DWORD)fTime;
 							rgdod[i].uAppData = NULL;
 
 							diGlobalsInstance->dwSequence++;
-							diGlobalsInstance->mouseStateDeviceData->lX = 0;
+							diGlobalsInstance->bufferedDX = 0;
 							dwOut++;
 						}
-						else if (diGlobalsInstance->mouseStateDeviceData->lY != 0)
+						else if (diGlobalsInstance->bufferedDY != 0)
 						{
-							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_Y: %i", __FILE__, __LINE__, diGlobalsInstance->mouseStateDeviceData->lY);
+							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_Y: %i", __FILE__, __LINE__, diGlobalsInstance->bufferedDY);
 
-							rgdod[i].dwData = diGlobalsInstance->mouseStateDeviceData->lY;
+							rgdod[i].dwData = diGlobalsInstance->bufferedDY;
 							rgdod[i].dwOfs = DIMOFS_Y;
 							rgdod[i].dwSequence = diGlobalsInstance->dwSequence;
 							rgdod[i].dwTimeStamp = (DWORD)fTime;
 							rgdod[i].uAppData = NULL;
 
 							diGlobalsInstance->dwSequence++;
-							diGlobalsInstance->mouseStateDeviceData->lY = 0;
+							diGlobalsInstance->bufferedDY = 0;
 							dwOut++;
 						}
-						else if (diGlobalsInstance->mouseStateDeviceData->lZ != 0)
+						else if (diGlobalsInstance->bufferedDZ != 0)
 						{
-							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_Z: %i", __FILE__, __LINE__, diGlobalsInstance->mouseStateDeviceData->lZ);
+							//diGlobalsInstance->LogA("MouseDevice->GetDeviceData() sending DIMOFS_Z: %i", __FILE__, __LINE__, diGlobalsInstance->bufferedDZ);
 
-							rgdod[i].dwData = diGlobalsInstance->mouseStateDeviceData->lZ;
+							rgdod[i].dwData = diGlobalsInstance->bufferedDZ;
 							rgdod[i].dwOfs = DIMOFS_Z;
 							rgdod[i].dwSequence = diGlobalsInstance->dwSequence;
 							rgdod[i].dwTimeStamp = (DWORD)fTime;
 							rgdod[i].uAppData = NULL;
 
 							diGlobalsInstance->dwSequence++;
-							diGlobalsInstance->mouseStateDeviceData->lZ = 0;
+							diGlobalsInstance->bufferedDZ = 0;
 							dwOut++;
 						}
 						else if (diGlobalsInstance->mouseStateDeviceData->rgbButtons[0] != diGlobalsInstance->mouseStateDeviceDataGame->rgbButtons[0]) {

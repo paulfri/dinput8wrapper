@@ -103,9 +103,11 @@ public:
 				short delta = (short)HIWORD(msll->mouseData);
 				diGlobalsInstance->Lock();
 				diGlobalsInstance->mouseStateDeviceData->lZ += delta;
+				diGlobalsInstance->bufferedDZ += delta;
 				LONG newLZ = diGlobalsInstance->mouseStateDeviceData->lZ;
+				LONG newBZ = diGlobalsInstance->bufferedDZ;
 				diGlobalsInstance->Unlock();
-				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i lZ_after=%i", __FILE__, __LINE__, (int)delta, newLZ);
+				diGlobalsInstance->LogA("LL WM_MOUSEWHEEL delta=%i lZ=%i bZ=%i", __FILE__, __LINE__, (int)delta, newLZ, newBZ);
 			}
 		}
 		return CallNextHookEx(NULL, nCode, wParam, lParam);

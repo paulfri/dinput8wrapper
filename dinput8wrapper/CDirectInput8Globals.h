@@ -23,9 +23,20 @@ public:
 	// Key-States actually sent to the game
 	BYTE gameKeyStates[256];	
 	
-	// Mouse-State for GetDeviceData() / GetDeviceState()
+	// Mouse-State for GetDeviceState() (cumulative since last poll).
 	DIMOUSESTATE* mouseStateDeviceData = new DIMOUSESTATE();
+	// "Last seen by game" tracker for button-change detection in
+	// GetDeviceData (compared against mouseStateDeviceData buttons).
 	DIMOUSESTATE* mouseStateDeviceDataGame = new DIMOUSESTATE();
+
+	// Separate motion accumulators for GetDeviceData (buffered events).
+	// EQ creates two mouse device instances and uses GetDeviceState on
+	// one and GetDeviceData on the other. They must not steal motion
+	// deltas from each other, so the buffered consumer drains its own
+	// accumulators while the polled consumer drains mouseStateDeviceData.
+	LONG bufferedDX = 0;
+	LONG bufferedDY = 0;
+	LONG bufferedDZ = 0;
 
 	HANDLE mouseEventHandle = NULL;
 
@@ -397,13 +408,16 @@ public:
 				{
 					mouseStateDeviceData->lX += raw->data.mouse.lLastX;
 					mouseStateDeviceData->lY += raw->data.mouse.lLastY;
+					bufferedDX += raw->data.mouse.lLastX;
+					bufferedDY += raw->data.mouse.lLastY;
 
-					//this->LogA("MouseMove2: %i / %i", __FILE__, __LINE__, raw->data.mouse.lLastX, raw->data.mouse.lLastY);									
+					//this->LogA("MouseMove2: %i / %i", __FILE__, __LINE__, raw->data.mouse.lLastX, raw->data.mouse.lLastY);
 
 					if (raw->data.mouse.usButtonFlags & RI_MOUSE_WHEEL)
 					{
 						short mouseWheelDelta = (short)raw->data.mouse.usButtonData;
 						mouseStateDeviceData->lZ += mouseWheelDelta;
+						bufferedDZ += mouseWheelDelta;
 					}
 
 					if (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN)
