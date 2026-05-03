@@ -40,11 +40,20 @@ public:
 
 	HANDLE mouseEventHandle = NULL;
 
-	// Last-seen absolute cursor position (for Wine/macOS, which delivers
-	// raw mouse motion as MOUSE_MOVE_ABSOLUTE). Used to compute deltas.
+	// Shared anchor for "last-known cursor position." Updated by both
+	// raw input (MOUSE_MOVE_ABSOLUTE) and the on-poll GetCursorPos
+	// sync. Whichever source observes a position change first claims
+	// that delta — the other source then sees zero delta and doesn't
+	// double-count.
 	LONG lastAbsX = 0;
 	LONG lastAbsY = 0;
 	bool lastAbsValid = false;
+
+	// Tracks whether the OS cursor was visible on the previous
+	// GetCursorPos sync. On hidden→visible transitions we skip the
+	// delta and just re-seed the anchor, since the cursor may have
+	// been moved (e.g. SetCursorPos) while hidden.
+	bool lastCursorVisible = false;
 
 	DIJOYSTATE2* gamepadState = new DIJOYSTATE2();
 
@@ -351,6 +360,68 @@ public:
 		LeaveCriticalSection(&critSect);
 	}
 
+	// Caller must hold the lock. Treats (curX, curY) as the latest
+	// absolute cursor position, computes the delta from the shared
+	// anchor, and adds it to both motion accumulators. The first call
+	// just seeds the anchor.
+	void AddMouseMotionFromAbsolute(LONG curX, LONG curY)
+	{
+		if (lastAbsValid)
+		{
+			LONG dX = curX - lastAbsX;
+			LONG dY = curY - lastAbsY;
+			if (dX != 0 || dY != 0)
+			{
+				mouseStateDeviceData->lX += dX;
+				mouseStateDeviceData->lY += dY;
+				bufferedDX += dX;
+				bufferedDY += dY;
+			}
+		}
+		lastAbsX = curX;
+		lastAbsY = curY;
+		lastAbsValid = true;
+	}
+
+	// Caller must hold the lock. Wine on macOS delivers WM_INPUT mouse
+	// motion noticeably later than it moves the visible OS cursor, so
+	// EQ-rendered things tied to DI deltas (e.g. the dragged-item
+	// position when an item is on cursor) trail the visible cursor and
+	// only catch up when motion stops. Sampling GetCursorPos at the
+	// moment EQ polls fills in any motion the raw-input pump hasn't
+	// delivered yet.
+	//
+	// Skipped while the cursor is hidden because EQ hides + recenters
+	// it during right-click camera mode; that recenter would otherwise
+	// be misread as user motion. Raw input continues to feed the
+	// accumulators in that mode (Wine delivers relative deltas when
+	// the cursor is captured).
+	void PullMouseCursorDelta()
+	{
+		CURSORINFO ci = { 0 };
+		ci.cbSize = sizeof(ci);
+		if (!GetCursorInfo(&ci))
+		{
+			return;
+		}
+		bool visible = (ci.flags & CURSOR_SHOWING) != 0;
+		if (!visible)
+		{
+			lastCursorVisible = false;
+			return;
+		}
+		if (!lastCursorVisible)
+		{
+			// Re-seed the anchor; the cursor may have jumped while hidden.
+			lastAbsX = ci.ptScreenPos.x;
+			lastAbsY = ci.ptScreenPos.y;
+			lastAbsValid = true;
+			lastCursorVisible = true;
+			return;
+		}
+		AddMouseMotionFromAbsolute(ci.ptScreenPos.x, ci.ptScreenPos.y);
+	}
+
 	void CheckRawInputDevices()
 	{
 		// TODO: Check for new rawinput devices
@@ -362,28 +433,35 @@ public:
 		{
 			if (raw->header.dwType == RIM_TYPEMOUSE)
 			{
-				// Wine on macOS delivers raw mouse motion as absolute
-				// virtual-screen coordinates. Translate to deltas in
-				// place so the rest of the handler is uniform.
 				if ((raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE))
 				{
-					LONG curX = raw->data.mouse.lLastX;
-					LONG curY = raw->data.mouse.lLastY;
-					LONG dX = lastAbsValid ? (curX - lastAbsX) : 0;
-					LONG dY = lastAbsValid ? (curY - lastAbsY) : 0;
-					lastAbsX = curX;
-					lastAbsY = curY;
-					lastAbsValid = true;
-					raw->data.mouse.lLastX = dX;
-					raw->data.mouse.lLastY = dY;
-					raw->data.mouse.usFlags &= ~MOUSE_MOVE_ABSOLUTE;
+					// Wine on macOS delivers raw mouse motion as absolute
+					// virtual-screen coordinates. Funnel through the
+					// shared anchor so the on-poll GetCursorPos sync
+					// doesn't double-count the same motion.
+					AddMouseMotionFromAbsolute(raw->data.mouse.lLastX,
+						raw->data.mouse.lLastY);
 				}
-
+				else if (raw->data.mouse.lLastX != 0 || raw->data.mouse.lLastY != 0)
 				{
+					// Relative motion (e.g. cursor captured in camera mode).
+					// Apply directly, then re-seed the anchor from the OS
+					// cursor so the on-poll sync stays consistent if the
+					// cursor becomes visible again.
 					mouseStateDeviceData->lX += raw->data.mouse.lLastX;
 					mouseStateDeviceData->lY += raw->data.mouse.lLastY;
 					bufferedDX += raw->data.mouse.lLastX;
 					bufferedDY += raw->data.mouse.lLastY;
+					POINT pt;
+					if (GetCursorPos(&pt))
+					{
+						lastAbsX = pt.x;
+						lastAbsY = pt.y;
+						lastAbsValid = true;
+					}
+				}
+
+				{
 
 					//this->LogA("MouseMove2: %i / %i", __FILE__, __LINE__, raw->data.mouse.lLastX, raw->data.mouse.lLastY);
 

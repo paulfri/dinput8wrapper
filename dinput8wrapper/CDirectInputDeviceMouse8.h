@@ -137,6 +137,8 @@ public:
 
 		diGlobalsInstance->Lock();
 		{
+			diGlobalsInstance->PullMouseCursorDelta();
+
 			// Copy current state to lpvData
 			memcpy(lpvData, diGlobalsInstance->mouseStateDeviceData, sizeof(DIMOUSESTATE));
 
@@ -183,6 +185,8 @@ public:
 
 		diGlobalsInstance->Lock();
 		{
+			diGlobalsInstance->PullMouseCursorDelta();
+
 			if ((*pdwInOut == 0) && (rgdod == NULL))
 			{
 				diGlobalsInstance->LogA("MouseDevice->GetDeviceData() checking for overflow", __FILE__, __LINE__);
